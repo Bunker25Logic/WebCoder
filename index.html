@@ -154,33 +154,60 @@
             text-align: center;
         }
 
-        /* Classes utilitárias para Mobile View Toggle */
-        .show-editor .view-editor { display: flex; }
-        .show-editor .view-preview { display: none; }
-        
-        .show-preview .view-editor { display: none; }
-        .show-preview .view-preview { display: flex; }
+        /* --- LAYOUT SYSTEM (Desktop & Mobile) --- */
+        /* Base: Oculto por padrão */
+        .view-editor, .view-preview { display: none; flex-direction: column; height: 100%; }
 
-        /* Em desktop, sempre mostra ambos lado a lado */
+        /* MODO: EDITOR FULL (Mobile & Desktop) */
+        body.mode-editor .view-editor { display: flex; width: 100%; }
+        
+        /* MODO: PREVIEW FULL (Mobile & Desktop) */
+        body.mode-preview .view-preview { display: flex; width: 100%; }
+
+        /* MODO: SPLIT (Apenas Desktop > 768px) */
         @media (min-width: 768px) {
-            .view-editor, .view-preview { display: flex !important; }
+            body.mode-split .view-editor { display: flex; width: 50%; }
+            body.mode-split .view-preview { display: flex; width: 50%; }
         }
+        /* Fallback Split no Mobile (Força Editor) */
+        @media (max-width: 767px) {
+            body.mode-split .view-editor { display: flex; width: 100%; }
+            body.mode-split .view-preview { display: none; }
+        }
+
+        /* Estilo dos botões de layout ativos */
+        .layout-btn.active {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
     </style>
 </head>
-<body class="flex flex-col h-screen select-none show-editor" id="main-body">
+<!-- Inicia em modo split no desktop ou editor no mobile -->
+<body class="flex flex-col h-screen select-none mode-split" id="main-body">
 
     <!-- Header -->
     <header class="flex items-center justify-between px-3 h-12 shrink-0 bg-[#18181b] border-b border-[#27272a]">
-        <div class="flex items-center gap-2">
-            <div class="p-1 bg-violet-600 rounded">
-                <i data-lucide="code-2" class="text-white w-4 h-4"></i>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <div class="p-1 bg-violet-600 rounded">
+                    <i data-lucide="code-2" class="text-white w-4 h-4"></i>
+                </div>
+                <h1 class="font-bold text-sm tracking-wide text-white hidden lg:block">WebCoder</h1>
             </div>
-            <h1 class="font-bold text-sm tracking-wide text-white hidden sm:block">WebCoder</h1>
             
-            <!-- Mobile View Switcher -->
-            <div class="flex md:hidden bg-black/30 rounded p-0.5 ml-2 border border-[#27272a]">
-                <button onclick="setView('editor')" id="btn-view-editor" class="px-3 py-1 text-[10px] font-bold rounded bg-violet-600 text-white transition">CODE</button>
-                <button onclick="setView('preview')" id="btn-view-preview" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-white transition">VIEW</button>
+            <!-- Unified Layout Controls (Visible on all devices) -->
+            <div class="flex items-center bg-black/30 rounded p-0.5 border border-[#27272a]">
+                <button onclick="setLayout('editor')" id="btn-layout-editor" class="layout-btn p-1.5 rounded text-gray-400 hover:text-white transition" title="Editor Tela Cheia">
+                    <i data-lucide="file-code-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="setLayout('split')" id="btn-layout-split" class="layout-btn hidden md:flex p-1.5 rounded text-gray-400 hover:text-white transition" title="Dividir Tela">
+                    <i data-lucide="columns" class="w-4 h-4"></i>
+                </button>
+                <button onclick="setLayout('preview')" id="btn-layout-preview" class="layout-btn p-1.5 rounded text-gray-400 hover:text-white transition" title="Preview Tela Cheia">
+                    <i data-lucide="monitor" class="w-4 h-4"></i>
+                </button>
             </div>
         </div>
 
@@ -198,7 +225,7 @@
     <main class="flex flex-1 overflow-hidden relative">
         
         <!-- Editor Section -->
-        <div class="view-editor w-full md:w-1/2 flex-col border-r border-[#27272a] h-full relative">
+        <div class="view-editor flex-col border-r border-[#27272a] h-full relative">
             
             <!-- Tabs -->
             <div class="flex bg-[#18181b] border-b border-[#27272a] shrink-0">
@@ -251,11 +278,8 @@
         </div>
 
         <!-- Preview Section -->
-        <div class="view-preview w-full md:w-1/2 flex-col bg-[#18181b] h-full relative">
-            <!-- Mobile Header for Preview -->
-            <div class="md:hidden bg-[#27272a] text-gray-400 text-xs px-2 py-1 flex items-center gap-2 border-b border-[#3f3f46]">
-                <i data-lucide="monitor" class="w-3 h-3"></i> Resultado
-            </div>
+        <div class="view-preview flex-col bg-[#18181b] h-full relative">
+            <!-- Header removed because main header now handles switching -->
             
             <iframe id="preview-frame" sandbox="allow-scripts allow-modals" class="w-full h-full bg-white"></iframe>
             
@@ -318,27 +342,29 @@
             js: Object.keys(snippets.js).concat(['const', 'let', 'var', 'return', 'async', 'await', 'window', 'alert', 'prompt', 'querySelector', 'addEventListener'])
         };
 
-        // --- SISTEMA DE VISUALIZAÇÃO MOBILE ---
-        function setView(view) {
-            document.body.className = document.body.className.replace(/show-\w+/, `show-${view}`);
+        // --- SISTEMA DE LAYOUT UNIFICADO ---
+        function setLayout(mode) {
+            // Remove classes antigas
+            document.body.classList.remove('mode-editor', 'mode-split', 'mode-preview');
+            // Adiciona nova classe
+            document.body.classList.add(`mode-${mode}`);
+
+            // Atualiza botões
+            document.querySelectorAll('.layout-btn').forEach(btn => btn.classList.remove('active', 'text-white'));
             
-            const btnEditor = document.getElementById('btn-view-editor');
-            const btnPreview = document.getElementById('btn-view-preview');
-            
-            if(view === 'editor') {
-                btnEditor.classList.replace('text-gray-400', 'text-white');
-                btnEditor.classList.replace('bg-transparent', 'bg-violet-600'); // Ativa cor
-                btnEditor.classList.remove('hover:text-white');
-                
-                btnPreview.classList.replace('text-white', 'text-gray-400');
-                btnPreview.classList.replace('bg-violet-600', 'bg-transparent');
-            } else {
-                btnPreview.classList.replace('text-gray-400', 'text-white');
-                btnPreview.classList.replace('bg-transparent', 'bg-violet-600');
-                
-                btnEditor.classList.replace('text-white', 'text-gray-400');
-                btnEditor.classList.replace('bg-violet-600', 'bg-transparent');
+            const activeBtn = document.getElementById(`btn-layout-${mode}`);
+            if(activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.classList.remove('text-gray-400');
             }
+        }
+
+        // Inicializa layout correto ao carregar
+        // No mobile, força editor. No desktop, mantem split (padrão HTML)
+        if (window.innerWidth < 768) {
+            setLayout('editor');
+        } else {
+            setLayout('split');
         }
 
         // --- TABS & SCROLL ---
@@ -368,7 +394,6 @@
             const textBefore = text.substring(0, cursor);
             
             // Regex: Pega última palavra (letras, números, !, *)
-            // Permite ! e * apenas se forem o único caractere ou inicio
             const match = textBefore.match(/([a-zA-Z0-9_*!]+)$/);
             const word = match ? match[0] : '';
 
@@ -383,12 +408,11 @@
             hideSuggestions();
         }
 
-        // --- POSICIONAMENTO DO POPUP (COORDENADAS DO CURSOR) ---
+        // --- POSICIONAMENTO DO POPUP ---
         function getCaretCoordinates(element, position) {
             const div = document.createElement('div');
             const style = getComputedStyle(element);
             
-            // Copia estilos essenciais para replicar geometria
             Array.from(style).forEach(prop => {
                 div.style[prop] = style.getPropertyValue(prop);
             });
@@ -398,7 +422,6 @@
             div.style.whiteSpace = 'pre-wrap';
             div.style.top = 0; div.style.left = 0;
             
-            // Texto até o cursor + span marcador
             div.textContent = element.value.substring(0, position);
             const span = document.createElement('span');
             span.textContent = '|';
@@ -419,29 +442,25 @@
         function showSuggestions(list, word, textarea) {
             suggestionBox.innerHTML = '';
             
-            // Limita a 5 itens para não poluir mobile
             list.slice(0, 5).forEach((item, idx) => {
                 const el = document.createElement('div');
                 el.className = `suggestion-item ${idx === 0 ? 'active' : ''}`;
                 
-                // Ícone baseado no tipo (simplificado)
                 let icon = '🔹';
-                if(snippets[currentLang][item]) icon = '⚡'; // Snippet
+                if(snippets[currentLang][item]) icon = '⚡'; 
                 
                 el.innerHTML = `<span class="suggestion-icon">${icon}</span> ${item}`;
                 
-                // Evento de clique/touch
                 el.onmousedown = (e) => {
-                    e.preventDefault(); // Previne perder foco do textarea
+                    e.preventDefault();
                     applySuggestion(item, word);
                 };
                 
                 suggestionBox.appendChild(el);
             });
 
-            // Posiciona caixa
             const coords = getCaretCoordinates(textarea, textarea.selectionStart);
-            const topPos = coords.top + coords.lineHeight + 5; // 5px padding
+            const topPos = coords.top + coords.lineHeight + 5;
             const leftPos = coords.left;
 
             suggestionBox.style.top = `${topPos}px`;
@@ -460,14 +479,12 @@
             
             let snippet = snippets[currentLang][suggestion];
             
-            // Gerador Genérico se não for snippet
             if (!snippet) {
                 if(currentLang === 'html') snippet = `<${suggestion}>|</${suggestion}>`;
                 else if(currentLang === 'css') snippet = `${suggestion}: |;`;
                 else snippet = suggestion;
             }
 
-            // Tratamento do cursor |
             let finalStr = snippet;
             let offset = snippet.length;
             
@@ -479,17 +496,16 @@
 
             textarea.setRangeText(finalStr, start, end, 'end');
             
-            // Ajusta cursor
             const newPos = start + offset;
             textarea.setSelectionRange(newPos, newPos);
             
             hideSuggestions();
             updateHighlight(currentLang);
-            runCode(); // Auto-run ao completar
+            runCode();
             textarea.focus();
         }
 
-        // --- FORMATTER (Função Restaurada) ---
+        // --- FORMATTER ---
         function formatCurrentCode() {
             const textarea = editors[currentLang];
             let code = textarea.value;
@@ -497,23 +513,18 @@
             let indent = 0;
             const pad = "  ";
 
-            // Normaliza as linhas e remove espaços vazios no início/fim
             code.split('\n').map(l => l.trim()).filter(l => l.length > 0).forEach(line => {
-                // Diminui indentação se fechar bloco
                 if (line.match(/^<\//) || line.startsWith('}') || line.startsWith(']')) {
                     indent = Math.max(0, indent - 1);
                 }
 
-                // Adiciona a linha
                 formatted += pad.repeat(indent) + line + "\n";
 
-                // Aumenta indentação se abrir bloco
-                // Verifica chaves, colchetes, ou tags HTML de abertura (sem fechamento na mesma linha)
                 const isOpeningTag = (currentLang === 'html') && 
                                      line.match(/^<[a-z0-9]+[^>]*>$/i) && 
                                      !line.match(/<\//) && 
                                      !line.match(/\/>/) &&
-                                     !line.startsWith('<!'); // Ignora doctype
+                                     !line.startsWith('<!');
                 
                 if (line.endsWith('{') || line.endsWith('[') || isOpeningTag) {
                     indent++;
@@ -525,10 +536,9 @@
             runCode();
         }
 
-        // --- TECLAS ESPECIAIS (TAB / ENTER) ---
+        // --- TECLAS ESPECIAIS ---
         Object.values(editors).forEach(ed => {
             ed.addEventListener('keydown', e => {
-                // Tab ou Enter aceita sugestão se visível
                 if ((e.key === 'Tab' || e.key === 'Enter') && suggestionBox.style.display !== 'none') {
                     e.preventDefault();
                     const first = suggestionBox.querySelector('.suggestion-item');
@@ -536,28 +546,25 @@
                     return;
                 }
                 
-                // Tab normal (indenta)
                 if (e.key === 'Tab') {
                     e.preventDefault();
                     document.execCommand('insertText', false, '  ');
                 }
             });
             
-            // Atualiza posição do cursor no rodapé
             ed.addEventListener('keyup', () => {
                 const lines = ed.value.substr(0, ed.selectionStart).split("\n");
                 document.getElementById('cursor-pos').innerText = `${lines.length}:${lines[lines.length-1].length + 1}`;
             });
         });
 
-        // --- SYNTAX HIGHLIGHT & RUN (Mantido do anterior mas otimizado) ---
+        // --- SYNTAX HIGHLIGHT & RUN ---
         function escapeHtml(text) {
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function highlightCode(code, lang) {
             let res = escapeHtml(code);
-            // Engine Regex Simplificada e Rápida
             if (lang === 'html') {
                 res = res.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
                 res = res.replace(/(&lt;\/?)([a-zA-Z0-9-]+)(.*?)(\/?&gt;)/g, (m, p1, p2, p3, p4) => 
@@ -570,7 +577,7 @@
                 res = res.replace(/\b(const|let|var|function|return|if|else|for)\b/g, '<span class="token-keyword">$1</span>');
                 res = res.replace(/(["'`].*?["'`])/g, '<span class="token-string">$1</span>');
             }
-            return res + '\n'; // Garante última linha renderizada
+            return res + '\n';
         }
 
         function updateHighlight(lang) {
@@ -589,7 +596,6 @@
             document.getElementById('preview-frame').src = URL.createObjectURL(blob);
         }
 
-        // Listener Console
         window.addEventListener('message', (e) => {
             if(e.data.type === 'log') {
                 const box = document.getElementById('console-logs');
@@ -603,10 +609,9 @@
             }
         });
 
-        // Init
-        // Pre-fill para demonstração
-        editors.html.value = '<div class="card">\n  <h1>Mobile IDE</h1>\n  <p>Digite ! ou * para testar.</p>\n</div>';
-        editors.css.value = '* {\n  box-sizing: border-box;\n}\nbody {\n  background: #111;\n  color: #fff;\n  padding: 20px;\n}\n.card {\n  border: 1px solid #333;\n  padding: 15px;\n  border-radius: 8px;\n}';
+        // Demo Content
+        editors.html.value = '<div class="card">\n  <h1>Mobile IDE</h1>\n  <p>Use os ícones acima para alternar o layout!</p>\n</div>';
+        editors.css.value = '* {\n  box-sizing: border-box;\n}\nbody {\n  background: #111;\n  color: #fff;\n  padding: 20px;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  margin: 0;\n}\n.card {\n  border: 1px solid #333;\n  padding: 2rem;\n  border-radius: 12px;\n  background: #1e1e1e;\n  text-align: center;\n  box-shadow: 0 4px 20px rgba(0,0,0,0.5);\n}';
         editors.js.value = 'console.log("Sistema pronto!");';
         
         updateHighlight('html'); updateHighlight('css'); updateHighlight('js');
