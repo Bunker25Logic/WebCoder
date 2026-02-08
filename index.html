@@ -122,15 +122,15 @@
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             z-index: 100;
-            width: 200px;
-            max-height: 180px;
+            width: 220px;
+            max-height: 200px;
             overflow-y: auto;
             display: none; /* Hidden by default */
             flex-direction: column;
         }
 
         .suggestion-item {
-            padding: 6px 10px;
+            padding: 8px 10px;
             font-size: 12px;
             font-family: 'Fira Code', monospace;
             color: #cdd6f4;
@@ -138,7 +138,7 @@
             border-bottom: 1px solid #313244;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
         .suggestion-item:last-child { border-bottom: none; }
         
@@ -148,11 +148,14 @@
         }
         
         .suggestion-icon {
-            opacity: 0.7;
-            font-size: 10px;
-            width: 14px;
+            opacity: 0.8;
+            font-size: 11px;
+            min-width: 16px;
             text-align: center;
         }
+        .icon-snippet { color: #facc15; } /* Amarelo para Snippets */
+        .icon-tag { color: #f87171; } /* Vermelho para Tags */
+        .icon-prop { color: #60a5fa; } /* Azul para Props */
 
         /* --- LAYOUT SYSTEM (Desktop & Mobile) --- */
         /* Base: Oculto por padrão */
@@ -279,7 +282,6 @@
 
         <!-- Preview Section -->
         <div class="view-preview flex-col bg-[#18181b] h-full relative">
-            <!-- Header removed because main header now handles switching -->
             
             <iframe id="preview-frame" sandbox="allow-scripts allow-modals" class="w-full h-full bg-white"></iframe>
             
@@ -303,55 +305,179 @@
         const highlights = { html: document.getElementById('hl-html'), css: document.getElementById('hl-css'), js: document.getElementById('hl-js') };
         const suggestionBox = document.getElementById('suggestion-box');
         
-        // --- SNIPPETS & SUGESTÕES ---
+        // --- REPOSITÓRIO COMPLETO DE SNIPPETS ---
         const snippets = {
             html: {
-                '!': '<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Document</title>\n</head>\n<body>\n  |\n</body>\n</html>',
-                'div': '<div>|</div>',
-                'h1': '<h1>|</h1>',
-                'p': '<p>|</p>',
-                'button': '<button>|</button>',
-                'a': '<a href="|"></a>',
-                'img': '<img src="|" alt="">',
-                'input': '<input type="text" placeholder="|">',
+                // Estrutura
+                '!': '<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>App</title>\n</head>\n<body>\n  |\n</body>\n</html>',
+                'meta': '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+                'link': '<link rel="stylesheet" href="|">',
                 'style': '<style>\n  |\n</style>',
-                'script': '<script>\n  |\n<\/script>'
+                'script': '<script>\n  |\n<\/script>',
+                
+                // Semântica
+                'div': '<div>|</div>',
+                'span': '<span>|</span>',
+                'header': '<header>\n  |\n</header>',
+                'footer': '<footer>\n  |\n</footer>',
+                'main': '<main>\n  |\n</main>',
+                'section': '<section>\n  |\n</section>',
+                'nav': '<nav>\n  |\n</nav>',
+                'article': '<article>\n  |\n</article>',
+                'aside': '<aside>\n  |\n</aside>',
+                
+                // Texto e Midia
+                'h1': '<h1>|</h1>',
+                'h2': '<h2>|</h2>',
+                'h3': '<h3>|</h3>',
+                'p': '<p>|</p>',
+                'a': '<a href="|">Link</a>',
+                'img': '<img src="|" alt="Imagem">',
+                'ul': '<ul>\n  <li>|</li>\n</ul>',
+                'ol': '<ol>\n  <li>|</li>\n</ol>',
+                'li': '<li>|</li>',
+                'br': '<br>',
+                'hr': '<hr>',
+                
+                // Formulários
+                'form': '<form action="">\n  |\n</form>',
+                'input': '<input type="text" placeholder="|">',
+                'inp-pass': '<input type="password" placeholder="Senha">',
+                'inp-email': '<input type="email" placeholder="Email">',
+                'inp-btn': '<input type="button" value="|">',
+                'inp-check': '<input type="checkbox" id="|">',
+                'inp-radio': '<input type="radio" name="grupo" id="|">',
+                'button': '<button type="button">|</button>',
+                'label': '<label for="|">Texto</label>',
+                'select': '<select name="Opções">\n  <option value="1">Opção 1</option>\n  <option value="2">Opção 2</option>\n</select>',
+                'textarea': '<textarea rows="4" cols="50">|</textarea>',
+                
+                // Tabelas
+                'table': '<table>\n  <thead>\n    <tr>\n      <th>Cabeçalho 1</th>\n      <th>Cabeçalho 2</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>|</td>\n      <td>Dado 2</td>\n    </tr>\n  </tbody>\n</table>',
+                'tr': '<tr>\n  <td>|</td>\n</tr>',
+                'td': '<td>|</td>'
             },
+            
             css: {
+                // Seletores Base
                 '*': '* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\n|',
-                'body': 'body {\n  |\n}',
-                'color': 'color: |;',
-                'background': 'background: |;',
+                'body': 'body {\n  font-family: sans-serif;\n  background-color: #f4f4f5;\n  color: #18181b;\n  |;\n}',
+                
+                // Layout Flex/Grid
                 'flex': 'display: flex;',
-                'grid': 'display: grid;',
-                'center': 'display: flex;\njustify-content: center;\nalign-items: center;'
+                'flex-col': 'display: flex;\nflex-direction: column;',
+                'flex-center': 'display: flex;\njustify-content: center;\nalign-items: center;',
+                'flex-between': 'display: flex;\njustify-content: space-between;\nalign-items: center;',
+                'grid': 'display: grid;\ngrid-template-columns: repeat(2, 1fr);\ngap: 1rem;',
+                
+                // Posicionamento
+                'rel': 'position: relative;',
+                'abs': 'position: absolute;\ntop: 0;\nleft: 0;',
+                'fixed': 'position: fixed;\nbottom: 0;\nright: 0;',
+                'z': 'z-index: |;',
+                
+                // Propriedades Comuns
+                'm': 'margin: |;',
+                'mt': 'margin-top: |;',
+                'mb': 'margin-bottom: |;',
+                'p': 'padding: |;',
+                'pt': 'padding-top: |;',
+                'pb': 'padding-bottom: |;',
+                'w': 'width: |;',
+                'h': 'height: |;',
+                'w100': 'width: 100%;',
+                'h100': 'height: 100vh;',
+                'bg': 'background-color: |;',
+                'color': 'color: |;',
+                'border': 'border: 1px solid #ccc;',
+                'radius': 'border-radius: 4px;',
+                'shadow': 'box-shadow: 0 4px 6px rgba(0,0,0,0.1);',
+                
+                // Texto
+                'font': 'font-family: sans-serif;',
+                'size': 'font-size: |rem;',
+                'bold': 'font-weight: bold;',
+                'center': 'text-align: center;',
+                'upper': 'text-transform: uppercase;',
+                
+                // Animação & Efeitos
+                'trans': 'transition: all 0.3s ease;',
+                'rotate': 'transform: rotate(45deg);',
+                'scale': 'transform: scale(1.1);',
+                'anim': 'animation: nome 1s infinite;',
+                '@key': '@keyframes nomeAnima {\n  0% { opacity: 0; }\n  100% { opacity: 1; }\n}',
+                '@media': '@media (max-width: 768px) {\n  |\n}',
+                'import': '@import url("|");'
             },
+            
             js: {
+                // Console & Debug
                 'log': 'console.log(|);',
+                'warn': 'console.warn(|);',
+                'error': 'console.error(|);',
+                
+                // Variáveis & Funções
+                'const': 'const | = ;',
+                'let': 'let | = ;',
                 'fun': 'function |() {\n  \n}',
+                'af': 'const | = () => {\n  \n};',
+                'return': 'return |;',
+                
+                // Controle de Fluxo
                 'if': 'if (|) {\n  \n}',
+                'ife': 'if (|) {\n  \n} else {\n  \n}',
+                'else': 'else {\n  |\n}',
+                'switch': 'switch (|) {\n  case value:\n    break;\n  default:\n    break;\n}',
+                'try': 'try {\n  |\n} catch (error) {\n  console.error(error);\n}',
+                
+                // Loops
                 'for': 'for (let i = 0; i < |; i++) {\n  \n}',
+                'forof': 'for (const item of |) {\n  \n}',
+                'while': 'while (|) {\n  \n}',
+                
+                // DOM Manipulation
                 'doc': 'document.',
-                'get': 'document.getElementById("|")'
+                'get': 'document.getElementById("|")',
+                'qs': 'document.querySelector("|")',
+                'qsa': 'document.querySelectorAll("|")',
+                'ae': 'addEventListener("|", (event) => {\n  \n});',
+                'create': 'document.createElement("|")',
+                'inner': 'innerHTML = "|";',
+                'class': 'classList.add("|");',
+                
+                // Array Methods
+                'map': '.map(item => |)',
+                'filter': '.filter(item => |)',
+                'forEach': '.forEach(item => {\n  |\n});',
+                'find': '.find(item => |)',
+                
+                // Async & Network
+                'fetch': 'fetch("|")\n  .then(response => response.json())\n  .then(data => console.log(data));',
+                'async': 'async function |() {\n  try {\n    const res = await fetch("");\n  } catch (e) {\n    console.error(e);\n  }\n}',
+                'time': 'setTimeout(() => {\n  |\n}, 1000);',
+                'interval': 'setInterval(() => {\n  |\n}, 1000);',
+                'prom': 'new Promise((resolve, reject) => {\n  |\n});'
             }
         };
 
+        // Gerar listas de palavras-chave combinando os snippets + palavras soltas
+        const commonKeywords = {
+            html: ['id', 'class', 'src', 'href', 'type', 'placeholder', 'value', 'name', 'content', 'rel', 'title', 'alt', 'width', 'height', 'style', 'onclick', 'hidden', 'disabled', 'checked', 'required', 'readonly'],
+            css: ['display', 'position', 'margin', 'padding', 'border', 'width', 'height', 'top', 'left', 'bottom', 'right', 'z-index', 'overflow', 'float', 'clear', 'color', 'background', 'opacity', 'visibility', 'cursor', 'font-size', 'font-family', 'text-align', 'line-height', 'content'],
+            js: ['null', 'undefined', 'true', 'false', 'NaN', 'this', 'new', 'class', 'extends', 'super', 'export', 'import', 'from', 'await', 'async', 'void', 'typeof', 'instanceof', 'Math', 'Date', 'JSON', 'window', 'document', 'location', 'history', 'localStorage', 'sessionStorage']
+        };
+
         const keywords = {
-            html: Object.keys(snippets.html).concat(['class', 'id', 'src', 'href', 'click', 'ul', 'li', 'span', 'header', 'footer', 'main', 'section']),
-            css: Object.keys(snippets.css).concat(['width', 'height', 'margin', 'padding', 'border', 'position', 'absolute', 'relative', 'font-size', 'text-align']),
-            js: Object.keys(snippets.js).concat(['const', 'let', 'var', 'return', 'async', 'await', 'window', 'alert', 'prompt', 'querySelector', 'addEventListener'])
+            html: [...new Set([...Object.keys(snippets.html), ...commonKeywords.html])].sort(),
+            css: [...new Set([...Object.keys(snippets.css), ...commonKeywords.css])].sort(),
+            js: [...new Set([...Object.keys(snippets.js), ...commonKeywords.js])].sort()
         };
 
         // --- SISTEMA DE LAYOUT UNIFICADO ---
         function setLayout(mode) {
-            // Remove classes antigas
             document.body.classList.remove('mode-editor', 'mode-split', 'mode-preview');
-            // Adiciona nova classe
             document.body.classList.add(`mode-${mode}`);
-
-            // Atualiza botões
             document.querySelectorAll('.layout-btn').forEach(btn => btn.classList.remove('active', 'text-white'));
-            
             const activeBtn = document.getElementById(`btn-layout-${mode}`);
             if(activeBtn) {
                 activeBtn.classList.add('active');
@@ -359,8 +485,7 @@
             }
         }
 
-        // Inicializa layout correto ao carregar
-        // No mobile, força editor. No desktop, mantem split (padrão HTML)
+        // Inicializa layout
         if (window.innerWidth < 768) {
             setLayout('editor');
         } else {
@@ -393,12 +518,13 @@
             const text = textarea.value;
             const textBefore = text.substring(0, cursor);
             
-            // Regex: Pega última palavra (letras, números, !, *)
-            const match = textBefore.match(/([a-zA-Z0-9_*!]+)$/);
+            // Regex melhorado para capturar palavras parciais ou símbolos de snippet
+            // CORREÇÃO: Adicionado '*' ao regex para permitir o snippet de reset do CSS
+            const match = textBefore.match(/([a-zA-Z0-9_\-@!*]+)$/);
             const word = match ? match[0] : '';
 
             if (word.length > 0) {
-                // Filtra sugestões
+                // Filtra sugestões (case insensitive)
                 const list = keywords[currentLang].filter(k => k.toLowerCase().startsWith(word.toLowerCase()));
                 if (list.length > 0) {
                     showSuggestions(list, word, textarea);
@@ -412,29 +538,21 @@
         function getCaretCoordinates(element, position) {
             const div = document.createElement('div');
             const style = getComputedStyle(element);
-            
-            Array.from(style).forEach(prop => {
-                div.style[prop] = style.getPropertyValue(prop);
-            });
-            
+            Array.from(style).forEach(prop => { div.style[prop] = style.getPropertyValue(prop); });
             div.style.position = 'absolute';
             div.style.visibility = 'hidden';
             div.style.whiteSpace = 'pre-wrap';
             div.style.top = 0; div.style.left = 0;
-            
             div.textContent = element.value.substring(0, position);
             const span = document.createElement('span');
             span.textContent = '|';
             div.appendChild(span);
-            
             document.body.appendChild(div);
-            
             const coordinates = {
                 top: span.offsetTop + element.offsetTop - element.scrollTop,
                 left: span.offsetLeft + element.offsetLeft - element.scrollLeft,
                 lineHeight: parseInt(style.lineHeight)
             };
-            
             document.body.removeChild(div);
             return coordinates;
         }
@@ -442,14 +560,23 @@
         function showSuggestions(list, word, textarea) {
             suggestionBox.innerHTML = '';
             
-            list.slice(0, 5).forEach((item, idx) => {
+            list.slice(0, 15).forEach((item, idx) => { // Aumentei limite para 15
                 const el = document.createElement('div');
                 el.className = `suggestion-item ${idx === 0 ? 'active' : ''}`;
                 
-                let icon = '🔹';
-                if(snippets[currentLang][item]) icon = '⚡'; 
+                // Ícones por tipo
+                let icon = '🔹'; // Default (Tag/Keyword)
+                let className = 'icon-tag';
                 
-                el.innerHTML = `<span class="suggestion-icon">${icon}</span> ${item}`;
+                if(snippets[currentLang][item]) {
+                    icon = '⚡'; // Snippet
+                    className = 'icon-snippet';
+                } else if (currentLang === 'css' && item.includes(':')) {
+                    icon = '🎨'; // Propriedade CSS
+                    className = 'icon-prop';
+                }
+
+                el.innerHTML = `<span class="suggestion-icon ${className}">${icon}</span> ${item}`;
                 
                 el.onmousedown = (e) => {
                     e.preventDefault();
@@ -460,10 +587,11 @@
             });
 
             const coords = getCaretCoordinates(textarea, textarea.selectionStart);
-            const topPos = coords.top + coords.lineHeight + 5;
-            const leftPos = coords.left;
+            // Ajuste para não sair da tela na direita
+            let leftPos = coords.left;
+            if (leftPos + 220 > window.innerWidth) leftPos = window.innerWidth - 230;
 
-            suggestionBox.style.top = `${topPos}px`;
+            suggestionBox.style.top = `${coords.top + coords.lineHeight + 5}px`;
             suggestionBox.style.left = `${leftPos}px`;
             suggestionBox.style.display = 'flex';
         }
@@ -479,8 +607,14 @@
             
             let snippet = snippets[currentLang][suggestion];
             
+            // Gerador de Snippet Genérico
             if (!snippet) {
-                if(currentLang === 'html') snippet = `<${suggestion}>|</${suggestion}>`;
+                if(currentLang === 'html') {
+                    // Se não for atributo, vira tag
+                    const isAttr = commonKeywords.html.includes(suggestion);
+                    if (!isAttr) snippet = `<${suggestion}>|</${suggestion}>`;
+                    else snippet = `${suggestion}="|"`;
+                }
                 else if(currentLang === 'css') snippet = `${suggestion}: |;`;
                 else snippet = suggestion;
             }
@@ -495,7 +629,6 @@
             }
 
             textarea.setRangeText(finalStr, start, end, 'end');
-            
             const newPos = start + offset;
             textarea.setSelectionRange(newPos, newPos);
             
@@ -539,11 +672,31 @@
         // --- TECLAS ESPECIAIS ---
         Object.values(editors).forEach(ed => {
             ed.addEventListener('keydown', e => {
-                if ((e.key === 'Tab' || e.key === 'Enter') && suggestionBox.style.display !== 'none') {
-                    e.preventDefault();
-                    const first = suggestionBox.querySelector('.suggestion-item');
-                    if (first) first.onmousedown(e);
-                    return;
+                // Navegação nas sugestões com Setas
+                if (suggestionBox.style.display !== 'none') {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const items = Array.from(suggestionBox.children);
+                        let activeIdx = items.findIndex(el => el.classList.contains('active'));
+                        
+                        if (activeIdx !== -1) items[activeIdx].classList.remove('active');
+                        
+                        if (e.key === 'ArrowDown') {
+                            activeIdx = (activeIdx + 1) % items.length;
+                        } else {
+                            activeIdx = (activeIdx - 1 + items.length) % items.length;
+                        }
+                        
+                        items[activeIdx].classList.add('active');
+                        items[activeIdx].scrollIntoView({ block: 'nearest' });
+                        return;
+                    }
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        const active = suggestionBox.querySelector('.active');
+                        if (active) active.onmousedown(e);
+                        return;
+                    }
                 }
                 
                 if (e.key === 'Tab') {
@@ -574,8 +727,9 @@
                 res = res.replace(/([a-zA-Z-]+):/g, '<span class="token-attr">$1</span>:');
             } else if (lang === 'js') {
                 res = res.replace(/(\/\/.*)/g, '<span class="token-comment">$1</span>');
-                res = res.replace(/\b(const|let|var|function|return|if|else|for)\b/g, '<span class="token-keyword">$1</span>');
+                res = res.replace(/\b(const|let|var|function|return|if|else|for|while|class|try|catch|async|await|new|import|from)\b/g, '<span class="token-keyword">$1</span>');
                 res = res.replace(/(["'`].*?["'`])/g, '<span class="token-string">$1</span>');
+                res = res.replace(/\b(console|document|window|Math|JSON)\b/g, '<span class="token-func">$1</span>');
             }
             return res + '\n';
         }
@@ -590,6 +744,7 @@
             const js = editors.js.value;
             const consoleFix = `<script>
                 const _log = console.log; console.log = (...a) => { window.parent.postMessage({type:'log', msg: a.join(' ')}, '*'); _log(...a); };
+                const _err = console.error; console.error = (...a) => { window.parent.postMessage({type:'log', msg: '🔴 ' + a.join(' ')}, '*'); _err(...a); };
                 window.onerror = (m) => window.parent.postMessage({type:'log', msg: '🔴 '+m}, '*');
             <\/script>`;
             const blob = new Blob([`<html><head><style>${css}</style></head><body>${html}${consoleFix}<script>${js}<\/script></body></html>`], {type: 'text/html'});
@@ -604,15 +759,16 @@
                 const div = document.createElement('div');
                 div.innerHTML = `> ${e.data.msg}`;
                 div.className = "border-b border-white/10 pb-1";
+                if(e.data.msg.toString().includes('🔴')) div.style.color = '#f87171';
                 content.appendChild(div);
                 content.scrollTop = content.scrollHeight;
             }
         });
 
         // Demo Content
-        editors.html.value = '<div class="card">\n  <h1>Mobile IDE</h1>\n  <p>Use os ícones acima para alternar o layout!</p>\n</div>';
-        editors.css.value = '* {\n  box-sizing: border-box;\n}\nbody {\n  background: #111;\n  color: #fff;\n  padding: 20px;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  margin: 0;\n}\n.card {\n  border: 1px solid #333;\n  padding: 2rem;\n  border-radius: 12px;\n  background: #1e1e1e;\n  text-align: center;\n  box-shadow: 0 4px 20px rgba(0,0,0,0.5);\n}';
-        editors.js.value = 'console.log("Sistema pronto!");';
+        editors.html.value = '<div class="card">\n  <h1>Super IDE</h1>\n  <p>Tente digitar "table", "flex-center" ou "fetch"!</p>\n  <button onclick="testar()">Click Me</button>\n</div>';
+        editors.css.value = '* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  background: #18181b;\n  color: #fff;\n  font-family: sans-serif;\n}\n\n.card {\n  padding: 2rem;\n  border: 1px solid #333;\n  border-radius: 8px;\n  text-align: center;\n  background: #27272a;\n}\n\nbutton {\n  margin-top: 10px;\n  padding: 8px 16px;\n  background: #8b5cf6;\n  color: white;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n}';
+        editors.js.value = 'function testar() {\n  console.log("Olá do console!");\n  alert("Funcionando!");\n}';
         
         updateHighlight('html'); updateHighlight('css'); updateHighlight('js');
         runCode();
