@@ -1,1 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebCoder Pro - Mobile Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* --- TEMA DARK --- */
+        :root {
+            --bg-dark: #09090b;
+            --bg-panel: #18181b;
+            --border: #27272a;
+            --accent: #8b5cf6;
+            
+            /* Syntax Highlighting */
+            --syntax-text: #f8f8f2;
+            --syntax-keyword: #ff79c6;
+            --syntax-string: #f1fa8c;
+            --syntax-tag: #ff79c6;
+            --syntax-attr: #50fa7b;
+            --syntax-comment: #6272a4;
+            --syntax-func: #8be9fd;
+            --syntax-number: #bd93f9;
+            --syntax-selector: #ffb86c;
+            --syntax-bracket: #f8f8f2;
+        }
 
+        body {
+            background-color: var(--bg-dark);
+            color: #e4e4e7;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* App-like feel */
+        }
+
+        /* --- EDITOR ENGINE --- */
+        .editor-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            overflow: hidden; 
+        }
+
+        .editor-textarea, .editor-highlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 1rem;
+            margin: 0;
+            border: none;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            tab-size: 2;
+            white-space: pre;
+            overflow: auto;
+            text-align: left;
+        }
+        
+        /* Ajuste para mobile */
+        @media (max-width: 640px) {
+            .editor-textarea, .editor-highlight {
+                font-size: 13px; /* Fonte um pouco menor no mobile */
+                padding: 12px;
+            }
+        }
+
+        .editor-textarea {
+            background: transparent;
+            color: transparent;
+            caret-color: #a855f7; /* Roxo */
+            z-index: 2;
+            resize: none;
+            outline: none;
+        }
+
+        .editor-highlight {
+            background-color: var(--bg-dark);
+            color: var(--syntax-text);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Syntax Colors */
+        .token-keyword { color: var(--syntax-keyword); font-weight: bold; }
+        .token-string { color: var(--syntax-string); }
+        .token-tag { color: var(--syntax-tag); }
+        .token-attr { color: var(--syntax-attr); font-style: italic; }
+        .token-comment { color: var(--syntax-comment); }
+        .token-func { color: var(--syntax-func); }
+        .token-number { color: var(--syntax-number); }
+        .token-selector { color: var(--syntax-selector); }
+        .token-bracket { color: #f8f8f2; }
+
+        /* --- UI ELEMENTS --- */
+        .tab-btn {
+            background: var(--bg-panel);
+            color: #71717a;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--bg-dark); color: #fff; }
+        .tab-btn.active-html { border-bottom-color: #f97316; }
+        .tab-btn.active-css { border-bottom-color: #3b82f6; }
+        .tab-btn.active-js { border-bottom-color: #eab308; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+
+        /* --- INTELLISENSE FLOATING BOX --- */
+        #suggestion-box {
+            position: absolute;
+            background-color: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 100;
+            width: 200px;
+            max-height: 180px;
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+        }
+
+        .suggestion-item {
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: 'Fira Code', monospace;
+            color: #cdd6f4;
+            cursor: pointer;
+            border-bottom: 1px solid #313244;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        
+        .suggestion-item:hover, .suggestion-item.active {
+            background-color: var(--accent);
+            color: white;
+        }
+        
+        .suggestion-icon {
+            opacity: 0.7;
+            font-size: 10px;
+            width: 14px;
+            text-align: center;
+        }
+
+        /* Classes utilitárias para Mobile View Toggle */
+        .show-editor .view-editor { display: flex; }
+        .show-editor .view-preview { display: none; }
+        
+        .show-preview .view-editor { display: none; }
+        .show-preview .view-preview { display: flex; }
+
+        /* Em desktop, sempre mostra ambos lado a lado */
+        @media (min-width: 768px) {
+            .view-editor, .view-preview { display: flex !important; }
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen select-none show-editor" id="main-body">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-3 h-12 shrink-0 bg-[#18181b] border-b border-[#27272a]">
+        <div class="flex items-center gap-2">
+            <div class="p-1 bg-violet-600 rounded">
+                <i data-lucide="code-2" class="text-white w-4 h-4"></i>
+            </div>
+            <h1 class="font-bold text-sm tracking-wide text-white hidden sm:block">WebCoder</h1>
+            
+            <!-- Mobile View Switcher -->
+            <div class="flex md:hidden bg-black/30 rounded p-0.5 ml-2 border border-[#27272a]">
+                <button onclick="setView('editor')" id="btn-view-editor" class="px-3 py-1 text-[10px] font-bold rounded bg-violet-600 text-white transition">CODE</button>
+                <button onclick="setView('preview')" id="btn-view-preview" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-white transition">VIEW</button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="formatCurrentCode()" class="p-2 text-violet-300 hover:bg-violet-900/30 rounded" title="Formatar Código">
+                <i data-lucide="wand-2" class="w-4 h-4"></i>
+            </button>
+            <button onclick="runCode()" class="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-white bg-green-600 hover:bg-green-500 rounded shadow-lg shadow-green-900/20 active:scale-95">
+                <i data-lucide="play" class="w-3 h-3"></i> <span class="hidden sm:inline">RUN</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex flex-1 overflow-hidden relative">
+        
+        <!-- Editor Section -->
+        <div class="view-editor w-full md:w-1/2 flex-col border-r border-[#27272a] h-full relative">
+            
+            <!-- Tabs -->
+            <div class="flex bg-[#18181b] border-b border-[#27272a] shrink-0">
+                <button onclick="switchTab('html')" id="tab-html" class="tab-btn active active-html flex-1 py-2 text-xs font-bold">HTML</button>
+                <button onclick="switchTab('css')" id="tab-css" class="tab-btn flex-1 py-2 text-xs font-bold">CSS</button>
+                <button onclick="switchTab('js')" id="tab-js" class="tab-btn flex-1 py-2 text-xs font-bold">JS</button>
+            </div>
+
+            <!-- Editor Area -->
+            <div class="relative flex-1 bg-[#09090b]">
+                
+                <!-- Floating Suggestion Box -->
+                <div id="suggestion-box"></div>
+
+                <!-- HTML -->
+                <div id="wrapper-html" class="editor-container">
+                    <pre class="editor-highlight" aria-hidden="true"><code id="hl-html"></code></pre>
+                    <textarea id="editor-html" class="editor-textarea" spellcheck="false" 
+                        oninput="handleInput(event, this); updateHighlight('html')" 
+                        onscroll="syncScroll('html')"
+                        onclick="hideSuggestions()"
+                        placeholder="Digite ! para estrutura base..."></textarea>
+                </div>
+
+                <!-- CSS -->
+                <div id="wrapper-css" class="editor-container hidden">
+                    <pre class="editor-highlight" aria-hidden="true"><code id="hl-css"></code></pre>
+                    <textarea id="editor-css" class="editor-textarea" spellcheck="false" 
+                        oninput="handleInput(event, this); updateHighlight('css')" 
+                        onscroll="syncScroll('css')"
+                        onclick="hideSuggestions()"
+                        placeholder="Digite * para reset..."></textarea>
+                </div>
+
+                <!-- JS -->
+                <div id="wrapper-js" class="editor-container hidden">
+                    <pre class="editor-highlight" aria-hidden="true"><code id="hl-js"></code></pre>
+                    <textarea id="editor-js" class="editor-textarea" spellcheck="false" 
+                        oninput="handleInput(event, this); updateHighlight('js')" 
+                        onscroll="syncScroll('js')"
+                        onclick="hideSuggestions()"></textarea>
+                </div>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="bg-[#18181b] text-[#52525b] text-[10px] py-1 px-2 border-t border-[#27272a] flex justify-between shrink-0 font-mono">
+                <span id="status-msg">READY</span>
+                <span id="cursor-pos">1:1</span>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="view-preview w-full md:w-1/2 flex-col bg-[#18181b] h-full relative">
+            <!-- Mobile Header for Preview -->
+            <div class="md:hidden bg-[#27272a] text-gray-400 text-xs px-2 py-1 flex items-center gap-2 border-b border-[#3f3f46]">
+                <i data-lucide="monitor" class="w-3 h-3"></i> Resultado
+            </div>
+            
+            <iframe id="preview-frame" sandbox="allow-scripts allow-modals" class="w-full h-full bg-white"></iframe>
+            
+            <!-- Console Overlay -->
+            <div id="console-logs" class="hidden absolute bottom-0 left-0 right-0 bg-black/90 text-gray-300 text-xs flex flex-col max-h-40 border-t border-gray-800 backdrop-blur-md z-20">
+                <div class="flex justify-between items-center p-2 bg-[#18181b]/90 border-b border-gray-800">
+                    <span class="font-bold text-gray-400">Console</span>
+                    <button onclick="document.getElementById('console-logs').classList.add('hidden')" class="p-1 hover:text-white">✕</button>
+                </div>
+                <div id="logs-content" class="overflow-y-auto p-2 font-mono space-y-1"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // --- ESTADO & CONFIG ---
+        let currentLang = 'html';
+        const editors = { html: document.getElementById('editor-html'), css: document.getElementById('editor-css'), js: document.getElementById('editor-js') };
+        const highlights = { html: document.getElementById('hl-html'), css: document.getElementById('hl-css'), js: document.getElementById('hl-js') };
+        const suggestionBox = document.getElementById('suggestion-box');
+        
+        // --- SNIPPETS & SUGESTÕES ---
+        const snippets = {
+            html: {
+                '!': '<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Document</title>\n</head>\n<body>\n  |\n</body>\n</html>',
+                'div': '<div>|</div>',
+                'h1': '<h1>|</h1>',
+                'p': '<p>|</p>',
+                'button': '<button>|</button>',
+                'a': '<a href="|"></a>',
+                'img': '<img src="|" alt="">',
+                'input': '<input type="text" placeholder="|">',
+                'style': '<style>\n  |\n</style>',
+                'script': '<script>\n  |\n<\/script>'
+            },
+            css: {
+                '*': '* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\n|',
+                'body': 'body {\n  |\n}',
+                'color': 'color: |;',
+                'background': 'background: |;',
+                'flex': 'display: flex;',
+                'grid': 'display: grid;',
+                'center': 'display: flex;\njustify-content: center;\nalign-items: center;'
+            },
+            js: {
+                'log': 'console.log(|);',
+                'fun': 'function |() {\n  \n}',
+                'if': 'if (|) {\n  \n}',
+                'for': 'for (let i = 0; i < |; i++) {\n  \n}',
+                'doc': 'document.',
+                'get': 'document.getElementById("|")'
+            }
+        };
+
+        const keywords = {
+            html: Object.keys(snippets.html).concat(['class', 'id', 'src', 'href', 'click', 'ul', 'li', 'span', 'header', 'footer', 'main', 'section']),
+            css: Object.keys(snippets.css).concat(['width', 'height', 'margin', 'padding', 'border', 'position', 'absolute', 'relative', 'font-size', 'text-align']),
+            js: Object.keys(snippets.js).concat(['const', 'let', 'var', 'return', 'async', 'await', 'window', 'alert', 'prompt', 'querySelector', 'addEventListener'])
+        };
+
+        // --- SISTEMA DE VISUALIZAÇÃO MOBILE ---
+        function setView(view) {
+            document.body.className = document.body.className.replace(/show-\w+/, `show-${view}`);
+            
+            const btnEditor = document.getElementById('btn-view-editor');
+            const btnPreview = document.getElementById('btn-view-preview');
+            
+            if(view === 'editor') {
+                btnEditor.classList.replace('text-gray-400', 'text-white');
+                btnEditor.classList.replace('bg-transparent', 'bg-violet-600'); // Ativa cor
+                btnEditor.classList.remove('hover:text-white');
+                
+                btnPreview.classList.replace('text-white', 'text-gray-400');
+                btnPreview.classList.replace('bg-violet-600', 'bg-transparent');
+            } else {
+                btnPreview.classList.replace('text-gray-400', 'text-white');
+                btnPreview.classList.replace('bg-transparent', 'bg-violet-600');
+                
+                btnEditor.classList.replace('text-white', 'text-gray-400');
+                btnEditor.classList.replace('bg-violet-600', 'bg-transparent');
+            }
+        }
+
+        // --- TABS & SCROLL ---
+        function switchTab(lang) {
+            currentLang = lang;
+            ['html', 'css', 'js'].forEach(l => {
+                document.getElementById(`wrapper-${l}`).classList.add('hidden');
+                document.getElementById(`tab-${l}`).classList.remove('active', `active-${l}`);
+            });
+            document.getElementById(`wrapper-${lang}`).classList.remove('hidden');
+            document.getElementById(`tab-${lang}`).classList.add('active', `active-${lang}`);
+            updateHighlight(lang);
+            hideSuggestions();
+        }
+
+        function syncScroll(lang) {
+            const textarea = editors[lang];
+            const pre = highlights[lang].parentElement;
+            pre.scrollTop = textarea.scrollTop;
+            pre.scrollLeft = textarea.scrollLeft;
+        }
+
+        // --- LÓGICA DE INPUT E SUGESTÃO ---
+        function handleInput(e, textarea) {
+            const cursor = textarea.selectionStart;
+            const text = textarea.value;
+            const textBefore = text.substring(0, cursor);
+            
+            // Regex: Pega última palavra (letras, números, !, *)
+            // Permite ! e * apenas se forem o único caractere ou inicio
+            const match = textBefore.match(/([a-zA-Z0-9_*!]+)$/);
+            const word = match ? match[0] : '';
+
+            if (word.length > 0) {
+                // Filtra sugestões
+                const list = keywords[currentLang].filter(k => k.toLowerCase().startsWith(word.toLowerCase()));
+                if (list.length > 0) {
+                    showSuggestions(list, word, textarea);
+                    return;
+                }
+            }
+            hideSuggestions();
+        }
+
+        // --- POSICIONAMENTO DO POPUP (COORDENADAS DO CURSOR) ---
+        function getCaretCoordinates(element, position) {
+            const div = document.createElement('div');
+            const style = getComputedStyle(element);
+            
+            // Copia estilos essenciais para replicar geometria
+            Array.from(style).forEach(prop => {
+                div.style[prop] = style.getPropertyValue(prop);
+            });
+            
+            div.style.position = 'absolute';
+            div.style.visibility = 'hidden';
+            div.style.whiteSpace = 'pre-wrap';
+            div.style.top = 0; div.style.left = 0;
+            
+            // Texto até o cursor + span marcador
+            div.textContent = element.value.substring(0, position);
+            const span = document.createElement('span');
+            span.textContent = '|';
+            div.appendChild(span);
+            
+            document.body.appendChild(div);
+            
+            const coordinates = {
+                top: span.offsetTop + element.offsetTop - element.scrollTop,
+                left: span.offsetLeft + element.offsetLeft - element.scrollLeft,
+                lineHeight: parseInt(style.lineHeight)
+            };
+            
+            document.body.removeChild(div);
+            return coordinates;
+        }
+
+        function showSuggestions(list, word, textarea) {
+            suggestionBox.innerHTML = '';
+            
+            // Limita a 5 itens para não poluir mobile
+            list.slice(0, 5).forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = `suggestion-item ${idx === 0 ? 'active' : ''}`;
+                
+                // Ícone baseado no tipo (simplificado)
+                let icon = '🔹';
+                if(snippets[currentLang][item]) icon = '⚡'; // Snippet
+                
+                el.innerHTML = `<span class="suggestion-icon">${icon}</span> ${item}`;
+                
+                // Evento de clique/touch
+                el.onmousedown = (e) => {
+                    e.preventDefault(); // Previne perder foco do textarea
+                    applySuggestion(item, word);
+                };
+                
+                suggestionBox.appendChild(el);
+            });
+
+            // Posiciona caixa
+            const coords = getCaretCoordinates(textarea, textarea.selectionStart);
+            const topPos = coords.top + coords.lineHeight + 5; // 5px padding
+            const leftPos = coords.left;
+
+            suggestionBox.style.top = `${topPos}px`;
+            suggestionBox.style.left = `${leftPos}px`;
+            suggestionBox.style.display = 'flex';
+        }
+
+        function hideSuggestions() {
+            suggestionBox.style.display = 'none';
+        }
+
+        function applySuggestion(suggestion, originalWord) {
+            const textarea = editors[currentLang];
+            const start = textarea.selectionStart - originalWord.length;
+            const end = textarea.selectionStart;
+            
+            let snippet = snippets[currentLang][suggestion];
+            
+            // Gerador Genérico se não for snippet
+            if (!snippet) {
+                if(currentLang === 'html') snippet = `<${suggestion}>|</${suggestion}>`;
+                else if(currentLang === 'css') snippet = `${suggestion}: |;`;
+                else snippet = suggestion;
+            }
+
+            // Tratamento do cursor |
+            let finalStr = snippet;
+            let offset = snippet.length;
+            
+            if (snippet.includes('|')) {
+                const parts = snippet.split('|');
+                finalStr = parts.join('');
+                offset = parts[0].length;
+            }
+
+            textarea.setRangeText(finalStr, start, end, 'end');
+            
+            // Ajusta cursor
+            const newPos = start + offset;
+            textarea.setSelectionRange(newPos, newPos);
+            
+            hideSuggestions();
+            updateHighlight(currentLang);
+            runCode(); // Auto-run ao completar
+            textarea.focus();
+        }
+
+        // --- FORMATTER (Função Restaurada) ---
+        function formatCurrentCode() {
+            const textarea = editors[currentLang];
+            let code = textarea.value;
+            let formatted = "";
+            let indent = 0;
+            const pad = "  ";
+
+            // Normaliza as linhas e remove espaços vazios no início/fim
+            code.split('\n').map(l => l.trim()).filter(l => l.length > 0).forEach(line => {
+                // Diminui indentação se fechar bloco
+                if (line.match(/^<\//) || line.startsWith('}') || line.startsWith(']')) {
+                    indent = Math.max(0, indent - 1);
+                }
+
+                // Adiciona a linha
+                formatted += pad.repeat(indent) + line + "\n";
+
+                // Aumenta indentação se abrir bloco
+                // Verifica chaves, colchetes, ou tags HTML de abertura (sem fechamento na mesma linha)
+                const isOpeningTag = (currentLang === 'html') && 
+                                     line.match(/^<[a-z0-9]+[^>]*>$/i) && 
+                                     !line.match(/<\//) && 
+                                     !line.match(/\/>/) &&
+                                     !line.startsWith('<!'); // Ignora doctype
+                
+                if (line.endsWith('{') || line.endsWith('[') || isOpeningTag) {
+                    indent++;
+                }
+            });
+
+            textarea.value = formatted.trim();
+            updateHighlight(currentLang);
+            runCode();
+        }
+
+        // --- TECLAS ESPECIAIS (TAB / ENTER) ---
+        Object.values(editors).forEach(ed => {
+            ed.addEventListener('keydown', e => {
+                // Tab ou Enter aceita sugestão se visível
+                if ((e.key === 'Tab' || e.key === 'Enter') && suggestionBox.style.display !== 'none') {
+                    e.preventDefault();
+                    const first = suggestionBox.querySelector('.suggestion-item');
+                    if (first) first.onmousedown(e);
+                    return;
+                }
+                
+                // Tab normal (indenta)
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    document.execCommand('insertText', false, '  ');
+                }
+            });
+            
+            // Atualiza posição do cursor no rodapé
+            ed.addEventListener('keyup', () => {
+                const lines = ed.value.substr(0, ed.selectionStart).split("\n");
+                document.getElementById('cursor-pos').innerText = `${lines.length}:${lines[lines.length-1].length + 1}`;
+            });
+        });
+
+        // --- SYNTAX HIGHLIGHT & RUN (Mantido do anterior mas otimizado) ---
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function highlightCode(code, lang) {
+            let res = escapeHtml(code);
+            // Engine Regex Simplificada e Rápida
+            if (lang === 'html') {
+                res = res.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
+                res = res.replace(/(&lt;\/?)([a-zA-Z0-9-]+)(.*?)(\/?&gt;)/g, (m, p1, p2, p3, p4) => 
+                    `<span class="token-tag">${p1}${p2}</span>${p3.replace(/([a-zA-Z-]+)=/g, '<span class="token-attr">$1</span>=')}<span class="token-tag">${p4}</span>`);
+            } else if (lang === 'css') {
+                res = res.replace(/([^{]+)\{/g, '<span class="token-selector">$1</span>{');
+                res = res.replace(/([a-zA-Z-]+):/g, '<span class="token-attr">$1</span>:');
+            } else if (lang === 'js') {
+                res = res.replace(/(\/\/.*)/g, '<span class="token-comment">$1</span>');
+                res = res.replace(/\b(const|let|var|function|return|if|else|for)\b/g, '<span class="token-keyword">$1</span>');
+                res = res.replace(/(["'`].*?["'`])/g, '<span class="token-string">$1</span>');
+            }
+            return res + '\n'; // Garante última linha renderizada
+        }
+
+        function updateHighlight(lang) {
+            highlights[lang].innerHTML = highlightCode(editors[lang].value, lang);
+        }
+
+        function runCode() {
+            const html = editors.html.value;
+            const css = editors.css.value;
+            const js = editors.js.value;
+            const consoleFix = `<script>
+                const _log = console.log; console.log = (...a) => { window.parent.postMessage({type:'log', msg: a.join(' ')}, '*'); _log(...a); };
+                window.onerror = (m) => window.parent.postMessage({type:'log', msg: '🔴 '+m}, '*');
+            <\/script>`;
+            const blob = new Blob([`<html><head><style>${css}</style></head><body>${html}${consoleFix}<script>${js}<\/script></body></html>`], {type: 'text/html'});
+            document.getElementById('preview-frame').src = URL.createObjectURL(blob);
+        }
+
+        // Listener Console
+        window.addEventListener('message', (e) => {
+            if(e.data.type === 'log') {
+                const box = document.getElementById('console-logs');
+                const content = document.getElementById('logs-content');
+                box.classList.remove('hidden');
+                const div = document.createElement('div');
+                div.innerHTML = `> ${e.data.msg}`;
+                div.className = "border-b border-white/10 pb-1";
+                content.appendChild(div);
+                content.scrollTop = content.scrollHeight;
+            }
+        });
+
+        // Init
+        // Pre-fill para demonstração
+        editors.html.value = '<div class="card">\n  <h1>Mobile IDE</h1>\n  <p>Digite ! ou * para testar.</p>\n</div>';
+        editors.css.value = '* {\n  box-sizing: border-box;\n}\nbody {\n  background: #111;\n  color: #fff;\n  padding: 20px;\n}\n.card {\n  border: 1px solid #333;\n  padding: 15px;\n  border-radius: 8px;\n}';
+        editors.js.value = 'console.log("Sistema pronto!");';
+        
+        updateHighlight('html'); updateHighlight('css'); updateHighlight('js');
+        runCode();
+
+    </script>
+</body>
+</html>
